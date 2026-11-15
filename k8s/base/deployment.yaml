@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-billing
+  labels:
+    app: ms-billing
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ms-billing
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: ms-billing
+    spec:
+      containers:
+        - name: ms-billing
+          image: fiap-tc-ms-billing
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3001
+          env:
+            # Carrega o agente APM antes da aplicação, habilitando o tracing
+            # distribuído entre os três microsserviços.
+            - name: NODE_OPTIONS
+              value: "-r newrelic"
+          envFrom:
+            - configMapRef:
+                name: ms-billing-config
+            - secretRef:
+                name: ms-billing-secret
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "192Mi"
+            limits:
+              cpu: "500m"
+              memory: "384Mi"

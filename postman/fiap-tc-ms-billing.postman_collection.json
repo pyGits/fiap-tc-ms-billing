@@ -1,0 +1,212 @@
+{
+  "info": {
+    "name": "FIAP TC Fase 4 - Billing Service (orçamento e pagamento)",
+    "description": "Microsserviço participante da Saga.\n\nATENÇÃO: orçamentos e pagamentos NÃO são criados por HTTP. Eles nascem dos comandos GERAR_ORCAMENTO e REGISTRAR_PAGAMENTO que o orquestrador (OS Service) publica na fila `saga.billing.comandos`. As rotas REST deste serviço são de consulta — é assim que a fronteira do serviço fica honesta: quem muda estado é a Saga, não um cliente externo.\n\nPara produzir dados, use a coleção do OS Service e depois consulte aqui pelo mesmo ordemServicoId.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "ordemServicoId", "value": "", "type": "string" },
+    { "key": "orcamentoId", "value": "", "type": "string" },
+    { "key": "pagamentoId", "value": "", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Saúde e documentação",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('identifica o serviço', () => pm.expect(pm.response.json().servico).to.eql('fiap-tc-ms-billing'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api-docs.json",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api-docs.json", "host": ["{{baseUrl}}"], "path": ["api-docs.json"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orçamentos",
+      "item": [
+        {
+          "name": "GET /orcamentos",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orcamentos?status=GERADO",
+              "host": ["{{baseUrl}}"],
+              "path": ["orcamentos"],
+              "query": [
+                { "key": "status", "value": "GERADO", "description": "GERADO, APROVADO, CANCELADO" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "if (Array.isArray(lista) && lista.length) {",
+                  "  pm.collectionVariables.set('orcamentoId', lista[0].id);",
+                  "  pm.collectionVariables.set('ordemServicoId', lista[0].ordemServicoId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /orcamentos/ordem-servico/{ordemServicoId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orcamentos/ordem-servico/{{ordemServicoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orcamentos", "ordem-servico", "{{ordemServicoId}}"]
+            },
+            "description": "Consulta pela chave de negócio que atravessa os três serviços: o id da ordem de serviço."
+          }
+        },
+        {
+          "name": "GET /orcamentos/{id}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orcamentos/{{orcamentoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orcamentos", "{{orcamentoId}}"]
+            },
+            "description": "O orçamento traz os itens embutidos: é um agregado fechado, lido por inteiro — a razão de o banco deste serviço ser de documentos."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pagamentos",
+      "item": [
+        {
+          "name": "GET /pagamentos",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/pagamentos?status=APROVADO",
+              "host": ["{{baseUrl}}"],
+              "path": ["pagamentos"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "APROVADO",
+                  "description": "PENDENTE, APROVADO, RECUSADO, ESTORNADO"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json();",
+                  "if (Array.isArray(lista) && lista.length) {",
+                  "  pm.collectionVariables.set('pagamentoId', lista[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /pagamentos/ordem-servico/{ordemServicoId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/pagamentos/ordem-servico/{{ordemServicoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["pagamentos", "ordem-servico", "{{ordemServicoId}}"]
+            }
+          }
+        },
+        {
+          "name": "GET /pagamentos/{id}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/pagamentos/{{pagamentoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["pagamentos", "{{pagamentoId}}"]
+            }
+          }
+        },
+        {
+          "name": "GET /pagamentos?status=ESTORNADO (evidência do rollback)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/pagamentos?status=ESTORNADO",
+              "host": ["{{baseUrl}}"],
+              "path": ["pagamentos"],
+              "query": [{ "key": "status", "value": "ESTORNADO" }]
+            },
+            "description": "Depois de rodar o cenário \"Rollback - falha na execução\" na coleção do OS Service, o pagamento daquela Saga aparece aqui: é a prova de que a compensação foi executada."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhook do Mercado Pago",
+      "item": [
+        {
+          "name": "POST /webhooks/mercado-pago",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              {
+                "key": "x-webhook-secret",
+                "value": "{{webhookSecret}}",
+                "description": "Obrigatório quando MERCADO_PAGO_WEBHOOK_SECRET está configurado"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"payment\",\n  \"action\": \"payment.updated\",\n  \"data\": {\n    \"id\": \"123456789\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/mercado-pago",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhooks", "mercado-pago"]
+            },
+            "description": "Notificação assíncrona do provedor. O serviço NÃO confia no corpo recebido: ele consulta o status do pagamento na API do Mercado Pago antes de alterar qualquer estado."
+          }
+        }
+      ]
+    }
+  ]
+}

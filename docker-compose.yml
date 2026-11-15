@@ -1,0 +1,56 @@
+# Ambiente local do Billing Service.
+#
+# Depende da rede `oficina-net` e do RabbitMQ criados pelo compose do
+# fiap-tc-ms-os — suba aquele primeiro:
+#
+#   (em fiap-tc-ms-os)       docker compose up -d --build
+#   (aqui)                   docker compose up -d --build
+#
+# API do Billing: http://localhost:3001/api-docs
+services:
+  # Banco PRÓPRIO do Billing. O OS Service e o Execução não têm credencial aqui
+  # e nem conhecem este endereço: conversam apenas por mensagem.
+  mongo-billing:
+    image: mongo:7
+    container_name: oficina-mongo-billing
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - mongo-billing-dados:/data/db
+    networks: [oficina-net]
+
+  ms-billing:
+    build: .
+    container_name: oficina-ms-billing
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      NODE_ENV: production
+      SERVICE_NAME: fiap-tc-ms-billing
+      MONGO_URI: mongodb://mongo-billing:27017
+      MONGO_DB: fiap_tc_billing
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      AUTH_DISABLED: "true"
+      LOG_LEVEL: debug
+      # Provedor de pagamento em memória: o ambiente local nunca cobra de
+      # verdade. Para exercitar a API real, informe o token e desligue o mock.
+      MERCADO_PAGO_MOCK: "true"
+      MERCADO_PAGO_ACCESS_TOKEN: ""
+    depends_on:
+      mongo-billing:
+        condition: service_healthy
+    networks: [oficina-net]
+
+volumes:
+  mongo-billing-dados:
+
+networks:
+  oficina-net:
+    name: oficina-net
+    external: true

@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-billing
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: ms-billing
+          imagePullPolicy: Always
