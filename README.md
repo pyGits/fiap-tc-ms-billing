@@ -1,5 +1,9 @@
 # fiap-tc-ms-billing — Orçamento e Pagamento
 
+> **Tech Challenge — Pós-Tech SOAT (FIAP) — Fase 4**
+> **Eric Kanno Rodrigues de Araujo** — RM 371731 — Grupo 45 — Discord: `peeyote`
+> Vídeo da entrega: <https://youtu.be/Nlk2cV31lzk>
+
 Microsserviço **participante da Saga** da oficina mecânica. Responde por dois
 passos do fluxo e pelas duas compensações correspondentes:
 
